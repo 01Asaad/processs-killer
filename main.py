@@ -55,37 +55,29 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, h_offset):
     line = input_lines[idx]
     prefix = "> " if idx == current_row else "  "
 
-    content = prefix + line
+    content : str = prefix + line
     start = h_offset
-    # start = min(h_offset, max(0, len(content)-1))
-    visible = [start, start + width] #what is actually visible in the content, not the visible string (which may have ellipsis)
-    pref, postf = "", ""
-    if start > 0:
-        pref = "..."
-        visible[0] = start + 3
-    if start+width < len(content) :
-        postf = "..."
-        visible[1] = start + width - 3
+    
+    exec_range = get_command_span(line, len(prefix)) #relative to all line
+    exec_range = max(0, exec_range[0] - start), max(0, exec_range[1] - start)
 
-    visible_content : str = pref + content[visible[0]:visible[1]] + postf
+    # shown_line = [""] * width
+    shown_line = [i for i in content[start:start + width]]
+    if start > 0 : shown_line[:3] = "..."
+    if start + width < len(content) : shown_line[-3:] = "..."
 
-    cmd_start, cmd_end = get_command_span(line, len(prefix)) #relative to all line
-    cmd_start_vis = cmd_start - visible[0] + len(pref) if cmd_start is not None else None
-    cmd_end_vis = cmd_end - visible[0] + len(pref) if cmd_end is not None else None
+    shown_line = "".join(shown_line)
 
-    try:
-        if cmd_start is None:
-            stdscr.addstr(display_line_idx, 0, visible_content, base_color[0])
-            return
-        
-        if cmd_start > visible[0] :
-            stdscr.addstr(display_line_idx, 0, visible_content[:cmd_start_vis], base_color[0])
-        if cmd_start < visible[1] and cmd_end > visible[0] :
-            stdscr.addstr(display_line_idx, max(cmd_start_vis, 0), visible_content[max(cmd_start_vis, 0):cmd_end_vis], base_color[1])
-        if True :#cmd_end < visible[1] :
-            stdscr.addstr(display_line_idx, max(0, cmd_end_vis), visible_content[max(0, cmd_end_vis):], base_color[0])
+    try :
+        if exec_range[0] > 0 :
+            stdscr.addstr(display_line_idx, 0, shown_line[:exec_range[0]], base_color[0])
+        if exec_range[0] < width and exec_range[1] > 0 :
+            stdscr.addstr(display_line_idx, exec_range[0], shown_line[exec_range[0]:exec_range[1]], base_color[1])
+        if exec_range[1] < width :
+            stdscr.addstr(display_line_idx, exec_range[1], shown_line[exec_range[1]:], base_color[0])
     except curses.error:
         pass
+
 
 def main(stdscr, input_lines):
     stdscr.clear()
