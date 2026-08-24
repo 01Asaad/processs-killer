@@ -2,14 +2,14 @@ import curses
 import sys
 import subprocess
 
+PROCESSES_TO_IGNORE = (f"grep {sys.argv[1]}", __file__, "killer " + sys.argv[1])
+
 def kill(line):
     line = line.split(" ")
     line=[i for i in line if i.strip()][1]
     subprocess.run(["kill", "-9", line])
 
-def main(stdscr, input_lines):
-    stdscr.clear()
-    
+def get_curses_colors():
     if curses.has_colors():
         curses.use_default_colors()
         
@@ -24,20 +24,55 @@ def main(stdscr, input_lines):
         selected_color = curses.A_REVERSE
     
     curses.curs_set(0)
+    return default_color, selected_color
 
+def draw_line(stdscr, display_line_idx, width, top_row, current_row, h_offset):
+    idx = top_row + display_line_idx
+    if idx >= len(input_lines): return False
+
+    line = input_lines[idx]
+    prefix = "> " if idx == current_row else "  "
+    content = prefix + line
+    start = min(h_offset, max(0, len(content)-1))
+    visible = content[start:start + width]
+    if start > 0 and width > 3:
+        visible = "..." + visible[3:]
+    if start+width < len(content) and width > 3:
+        visible = visible[:-3] + "..."
+    
+    default_color, selected_color = get_curses_colors()
+    color = selected_color if idx == current_row else default_color
+
+    try:
+        stdscr.addstr(display_line_idx, 0, visible, color)
+    except curses.error:
+        pass
+
+def main(stdscr, input_lines):
+    stdscr.clear()
     
     
-
     current_row = 0
+    top_row = 0
+    h_offset = 0
 
     while True:
         stdscr.clear()
+        if not input_lines: exit()
 
-        for idx, line in enumerate(input_lines):
-            if idx == current_row:
-                stdscr.addstr(idx, 0, f"> {line}", selected_color)
-            else:
-                stdscr.addstr(idx, 0, f"  {line}", default_color)
+        visible_height, w = stdscr.getmaxyx()
+
+        top_row = current_row if current_row < top_row else top_row
+        top_row = current_row - visible_height + 1 if current_row >= top_row + visible_height else top_row
+
+
+        max_content_length = max(len(f"> {line}") for line in input_lines)
+        max_offset = max(0, max_content_length - w)
+        h_offset = max(0, h_offset)
+        h_offset = min(h_offset, max_offset)
+
+        for display_line_idx in range(visible_height):
+            draw_line(stdscr, display_line_idx, w, top_row, current_row, h_offset)
 
         stdscr.refresh()
 
@@ -47,6 +82,14 @@ def main(stdscr, input_lines):
                 current_row -= 1
             case curses.KEY_DOWN if current_row < len(input_lines) - 1:
                 current_row += 1
+            case curses.KEY_RIGHT:
+                h_offset = min(max_offset, h_offset + 10)
+            case curses.KEY_LEFT:
+                h_offset = max(0, h_offset - 10)
+            case curses.KEY_END:
+                current_row = len(input_lines) - 1
+            case curses.KEY_HOME:
+                current_row = 0
             case 10:  # Enter key
                 line_to_execute = input_lines[current_row]
                 kill(line_to_execute)
@@ -59,7 +102,7 @@ def main(stdscr, input_lines):
             case 113 : #q key (ord('q'))
                 break
 
-PROCESSES_TO_IGNORE = (f"grep {sys.argv[1]}")
+
 
 if __name__ == '__main__':
     if not len(sys.argv) > 1 :
