@@ -45,12 +45,13 @@ def get_command_span(line : str, prefix_len : int):
     return prefix_len + cmd_start, prefix_len + cmd_start + len(cmd_name)
 
 
-def draw_line(stdscr, display_line_idx, width, top_row, current_row, h_offset):
+def draw_line(stdscr, display_line_idx, width, top_row, current_row, h_offset, colors) :
     
     idx = top_row + display_line_idx
     if idx >= len(input_lines): return False
 
-    base_color = (SELECTED_COLOR, SELECTED_COMMAND_COLOR) if idx == current_row else (DEFAULT_COLOR, COMMAND_COLOR)
+    default_color, selected_color, command_color, selected_command_color = colors
+    base_color = (selected_color, selected_command_color) if idx == current_row else (default_color, command_color)
 
     line = input_lines[idx]
     prefix = "> " if idx == current_row else "  "
@@ -87,6 +88,8 @@ def main(stdscr, input_lines):
     top_row = 0
     h_offset = 0
 
+    COLORS = get_curses_colors()
+
     while True:
         stdscr.clear()
         if not input_lines: exit()
@@ -103,7 +106,7 @@ def main(stdscr, input_lines):
         h_offset = min(h_offset, max_offset)
 
         for display_line_idx in range(visible_height):
-            draw_line(stdscr, display_line_idx, w, top_row, current_row, h_offset)
+            draw_line(stdscr, display_line_idx, w, top_row, current_row, h_offset, COLORS)
 
         stdscr.refresh()
 
@@ -134,7 +137,7 @@ def main(stdscr, input_lines):
                 break
 
 
-DEFAULT_COLOR, SELECTED_COLOR, COMMAND_COLOR, SELECTED_COMMAND_COLOR = get_curses_colors()
+
 
 if __name__ == '__main__':
     if not len(sys.argv) > 1 :
