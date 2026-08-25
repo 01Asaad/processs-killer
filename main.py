@@ -1,7 +1,9 @@
+from argparse import ArgumentParser
 import curses
-from functools import cache
 import sys
 import subprocess
+
+from Line import Block, Highlight, Line, trunc_left, trunc_right
 
 PROCESSES_TO_IGNORE = (f"grep {sys.argv[1]}", __file__, "killer " + sys.argv[1])
 
@@ -10,80 +12,72 @@ def kill(line):
     line=[i for i in line if i.strip()][1]
     subprocess.run(["kill", "-9", line])
 
+def get_curses_colors_colored_terminal() :
+    curses.use_default_colors()
+
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_WHITE, -1)
+    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+
+    curses.init_pair(3, curses.COLOR_YELLOW, -1)
+    curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)
+
+    curses.init_pair(5, curses.COLOR_RED, -1)
+    curses.init_pair(6, curses.COLOR_RED, curses.COLOR_BLACK)
+
+    default_color = curses.color_pair(1)
+    selected_color = curses.color_pair(2) | curses.A_REVERSE
+    command_color = curses.color_pair(3) | curses.A_BOLD
+    selected_command_color = curses.color_pair(4) | curses.A_BOLD | curses.A_REVERSE
+    searched_color = curses.color_pair(5) | curses.A_BOLD
+    selected_searched_color = curses.color_pair(6) | curses.A_BOLD | curses.A_REVERSE
+
+    return default_color, selected_color, command_color, selected_command_color, searched_color, selected_searched_color
+
+def get_curses_colors_non_colored_terminal() :
+    default_color = curses.A_NORMAL
+    selected_color = curses.A_REVERSE
+    command_color = curses.A_BOLD
+    selected_command_color = curses.A_BOLD
+    searched_color = curses.A_BOLD
+    selected_searched_color = curses.A_BOLD | curses.A_REVERSE
+    return default_color, selected_color, command_color, selected_command_color, searched_color, selected_searched_color
+
 def get_curses_colors():
-    if curses.has_colors():
-        curses.use_default_colors()
-
-        curses.start_color()
-        curses.init_pair(1, curses.COLOR_WHITE, -1)
-        curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        curses.init_pair(3, curses.COLOR_YELLOW, -1)
-        curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)
-
-        default_color = curses.color_pair(1)
-        selected_color = curses.color_pair(2) | curses.A_REVERSE
-        command_color = curses.color_pair(3) | curses.A_BOLD
-        selected_command_color = curses.color_pair(4) | curses.A_BOLD | curses.A_REVERSE
-    else:
-        default_color = curses.A_NORMAL
-        selected_color = curses.A_REVERSE
-        command_color = curses.A_BOLD
-        selected_command_color = curses.A_BOLD
-
+    colors = get_curses_colors_colored_terminal() if curses.has_colors() else get_curses_colors_non_colored_terminal()
     curses.curs_set(0)
-    return default_color, selected_color, command_color, selected_command_color
-
-@cache
-def get_command_span(line : str, prefix_len : int):
-    parts = line.split()
-    if len(parts) < 11:
-        return None, None
-
-    cmd_name = parts[10]
-    cmd_start = line.index(cmd_name)
-
-    return prefix_len + cmd_start, prefix_len + cmd_start + len(cmd_name)
+    return colors
 
 
-def draw_line(stdscr, display_line_idx, width, top_row, current_row, h_offset, colors) :
+
+def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colors) :
     
     idx = top_row + display_line_idx
     if idx >= len(input_lines): return False
 
-    default_color, selected_color, command_color, selected_command_color = colors
-    base_color = (selected_color, selected_command_color) if idx == current_row else (default_color, command_color)
+    default_color, selected_color, command_color, selected_command_color, searched_color, selected_searched_color = colors
+    base_color = (selected_color, selected_command_color, selected_searched_color) if idx == current_row else (default_color, command_color, searched_color)
 
-    line = input_lines[idx]
-    prefix = "> " if idx == current_row else "  "
+    line : Line = input_lines[idx]    
 
-    content : str = prefix + line
-    start = h_offset
-    
-    exec_range = get_command_span(line, len(prefix)) #relative to all line
-    exec_range = max(0, exec_range[0] - start), max(0, exec_range[1] - start)
-
-    # shown_line = [""] * width
-    shown_line = [i for i in content[start:start + width]]
-    if start > 0 : shown_line[:3] = "..."
-    if start + width < len(content) : shown_line[-3:] = "..."
-
-    shown_line = "".join(shown_line)
+    blocks = line.blocks
+    if idx == current_row : blocks = [Block("> ")] + trunc_left(blocks, 2)
+    if start > 0 : blocks = [Block("...", Highlight.normal)] + trunc_left(blocks, start)
+    if start + width < len(line.line) : blocks = trunc_right(blocks, len(line.line) - (start + width)) + [Block("...", Highlight.normal)]
 
     try :
-        if exec_range[0] > 0 :
-            stdscr.addstr(display_line_idx, 0, shown_line[:exec_range[0]], base_color[0])
-        if exec_range[0] < width and exec_range[1] > 0 :
-            stdscr.addstr(display_line_idx, exec_range[0], shown_line[exec_range[0]:exec_range[1]], base_color[1])
-        if exec_range[1] < width :
-            stdscr.addstr(display_line_idx, exec_range[1], shown_line[exec_range[1]:], base_color[0])
+        chars_written = 0
+        for block in blocks :
+            stdscr.addstr(display_line_idx, chars_written, block.content, base_color[block.highlight.value])
+            chars_written += len(block.content)
     except curses.error:
         pass
 
 
-def main(stdscr, input_lines):
+def main(stdscr, input_lines : list[Line]):
     stdscr.clear()
-    
-    
+
+
     current_row = 0
     top_row = 0
     h_offset = 0
@@ -100,7 +94,7 @@ def main(stdscr, input_lines):
         top_row = current_row - visible_height + 1 if current_row >= top_row + visible_height else top_row
 
 
-        max_content_length = max(len(f"> {line}") for line in input_lines)
+        max_content_length = max(len(line.line) for line in input_lines)
         max_offset = max(0, max_content_length - w)
         h_offset = max(0, h_offset)
         h_offset = min(h_offset, max_offset)
@@ -140,10 +134,16 @@ def main(stdscr, input_lines):
 
 
 if __name__ == '__main__':
-    if not len(sys.argv) > 1 :
+    parser = ArgumentParser(description="Process Killer")
+    parser.add_argument("search_term", help="Search term for processes")
+    parser.add_argument("--exec-only", "-e", action="store_true", help="Only search in the executable path of the process")
+    args = parser.parse_args()
+    if not args.search_term:
         print("no search term for process inserted")
         exit()
-    input_lines = [line for line in subprocess.check_output(f"ps aux | grep {sys.argv[1]}", shell=True, text=True).splitlines() if not any(p in line for p in PROCESSES_TO_IGNORE)]
+    input_lines = [Line(line, args.search_term) for line in subprocess.check_output(f"ps aux | grep {args.search_term}", shell=True, text=True).splitlines() if not any(p in line for p in PROCESSES_TO_IGNORE)]
+    if args.exec_only :
+        input_lines = [line for line in input_lines if args.search_term in line.command]
     if not input_lines :
         print("no processes found")
         exit()
