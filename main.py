@@ -1,4 +1,5 @@
 import curses
+from functools import cache
 import sys
 import subprocess
 
@@ -32,7 +33,7 @@ def get_curses_colors():
     curses.curs_set(0)
     return default_color, selected_color, command_color, selected_command_color
 
-
+@cache
 def get_command_span(line : str, prefix_len : int):
     parts = line.split()
     if len(parts) < 11:
@@ -49,8 +50,7 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, h_offset):
     idx = top_row + display_line_idx
     if idx >= len(input_lines): return False
 
-    default_color, selected_color, command_color, selected_command_color = get_curses_colors()
-    base_color = (selected_color, selected_command_color) if idx == current_row else (default_color, command_color)
+    base_color = (SELECTED_COLOR, SELECTED_COMMAND_COLOR) if idx == current_row else (DEFAULT_COLOR, COMMAND_COLOR)
 
     line = input_lines[idx]
     prefix = "> " if idx == current_row else "  "
@@ -134,6 +134,7 @@ def main(stdscr, input_lines):
                 break
 
 
+DEFAULT_COLOR, SELECTED_COLOR, COMMAND_COLOR, SELECTED_COMMAND_COLOR = get_curses_colors()
 
 if __name__ == '__main__':
     if not len(sys.argv) > 1 :
