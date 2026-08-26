@@ -1,11 +1,8 @@
 from argparse import ArgumentParser
 import curses
-import sys
 import subprocess
 
 from Line import Block, Highlight, Line, trunc_left, trunc_right
-
-PROCESSES_TO_IGNORE = (f"grep {sys.argv[1]}", __file__, "killer " + sys.argv[1])
 
 def kill(line):
     line = line.split(" ")
@@ -139,8 +136,9 @@ if __name__ == '__main__':
     parser.add_argument("--exec-only", "-e", action="store_true", help="Only search in the executable path of the process")
     args = parser.parse_args()
     if not args.search_term:
-        print("no search term for process inserted")
+        print("no search term for process was given")
         exit()
+    PROCESSES_TO_IGNORE = (f"grep {args.search_term}", __file__, "killer " + args.search_term)
     input_lines = [Line(line, args.search_term) for line in subprocess.check_output(f"ps aux | grep {args.search_term}", shell=True, text=True).splitlines() if not any(p in line for p in PROCESSES_TO_IGNORE)]
     if args.exec_only :
         input_lines = [line for line in input_lines if args.search_term in line.command]
