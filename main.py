@@ -61,8 +61,8 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
 
     blocks = line.blocks
     if idx == current_row : blocks = [Block("> ")] + trunc_left(blocks, 2)
-    if start > 0 : blocks = [Block("...", Highlight.normal)] + trunc_left(blocks, start)
-    if start + width < len(line.line) : blocks = trunc_right(blocks, len(line.line) - (start + width)) + [Block("...", Highlight.normal)]
+    if start > 0 : blocks = [Block("...", Highlight.normal)] + trunc_left(blocks, start + 3)
+    if start + width < len(line.line) : blocks = trunc_right(blocks, len(line.line) - (start + width) + 3) + [Block("...", Highlight.normal)]
 
     try :
         chars_written = 0
