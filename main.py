@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import curses
+import os
 import subprocess
 
 from Block import Block, trunc_left, trunc_right
@@ -46,6 +47,18 @@ def get_curses_colors():
     colors = get_curses_colors_colored_terminal() if curses.has_colors() else get_curses_colors_non_colored_terminal()
     curses.curs_set(0)
     return colors
+
+def get_matching_processes(search_term : str) :
+    process_output = subprocess.check_output(["ps", "aux"], text=True)
+    current_pid = str(os.getpid())
+
+    for line in process_output.splitlines():
+        fields = line.split(None, 10)
+        if len(fields) < 11 or fields[1] == current_pid:
+            continue
+        if search_term in line:
+            yield line
+
 
 
 
@@ -140,8 +153,7 @@ if __name__ == '__main__':
     if not args.search_term:
         print("no search term for process was given")
         exit()
-    PROCESSES_TO_IGNORE = (f"grep {args.search_term}", __file__, "killer " + args.search_term)
-    input_lines = [Line(line, args.search_term) for line in subprocess.check_output(f"ps aux | grep {args.search_term}", shell=True, text=True).splitlines() if not any(p in line for p in PROCESSES_TO_IGNORE)]
+    input_lines = [Line(line, args.search_term) for line in get_matching_processes(args.search_term)]
     if args.exec_only :
         input_lines = [line for line in input_lines if args.search_term in line.command]
     if not input_lines :

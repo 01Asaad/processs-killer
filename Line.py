@@ -10,12 +10,8 @@ class Line :
         self._blocks = None
     def get_command_span(self, line : str, prefix_len : int):
         parts = line.split()
-        if len(parts) < 11:
-            return None, None
-
         cmd_name = parts[10]
         cmd_start = line.index(cmd_name)
-
         return prefix_len + cmd_start, prefix_len + cmd_start + len(cmd_name)
     @property
     def command(self) :
