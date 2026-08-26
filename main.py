@@ -2,7 +2,9 @@ from argparse import ArgumentParser
 import curses
 import subprocess
 
-from Line import Block, Highlight, Line, trunc_left, trunc_right
+from Block import Block, trunc_left, trunc_right
+from Highlight import Highlight
+from Line import Line
 
 def kill(line : Line):
 
