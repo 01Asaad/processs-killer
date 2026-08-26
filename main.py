@@ -38,7 +38,7 @@ def get_curses_colors_non_colored_terminal() :
     default_color = curses.A_NORMAL
     selected_color = curses.A_REVERSE
     command_color = curses.A_BOLD
-    selected_command_color = curses.A_BOLD
+    selected_command_color = curses.A_BOLD | curses.A_REVERSE
     searched_color = curses.A_BOLD
     selected_searched_color = curses.A_BOLD | curses.A_REVERSE
     return default_color, selected_color, command_color, selected_command_color, searched_color, selected_searched_color
