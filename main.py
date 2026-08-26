@@ -4,10 +4,10 @@ import subprocess
 
 from Line import Block, Highlight, Line, trunc_left, trunc_right
 
-def kill(line):
-    line = line.split(" ")
-    line=[i for i in line if i.strip()][1]
-    subprocess.run(["kill", "-9", line])
+def kill(line : Line):
+
+    processID=[i for i in line.line.split(" ") if i.strip()][1]
+    subprocess.run(["kill", "-9", processID])
 
 def get_curses_colors_colored_terminal() :
     curses.use_default_colors()
