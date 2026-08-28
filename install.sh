@@ -17,8 +17,6 @@ fi
 mkdir -p "$INSTALL_DIR" "$BIN_DIR"
 install -m 644 \
     "$SCRIPT_DIR/main.py" \
-    "$SCRIPT_DIR/Block.py" \
-    "$SCRIPT_DIR/Highlight.py" \
     "$SCRIPT_DIR/Line.py" \
     "$INSTALL_DIR/"
 

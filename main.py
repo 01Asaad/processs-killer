@@ -4,8 +4,6 @@ import os
 import pwd
 import subprocess
 
-from Block import Block, trunc_left, trunc_right
-from Highlight import Highlight
 from Line import Line
 
 def kill(line : Line):
@@ -74,22 +72,30 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
     default_color, selected_color, command_color, selected_command_color, searched_color, selected_searched_color = colors
     base_color = (selected_color, selected_command_color, selected_searched_color) if idx == current_row else (default_color, command_color, searched_color)
 
-    line : Line = input_lines[idx]    
-
-    blocks = line.blocks
-    if idx == current_row : blocks = [Block("> ")] + trunc_left(blocks, 2)
-    if start > 0 : blocks = [Block("...", Highlight.normal)] + trunc_left(blocks, start + 3)
-    if start + width < len(line.line) : blocks = trunc_right(blocks, len(line.line) - (start + width) + 3) + [Block("...", Highlight.normal)]
+    line : Line = input_lines[idx]
+    res = line.line
+    if idx == current_row : res = "> " + res[2:]
+    if start > 0 : res = "..." + res[start + 3:]
+    if width < len(res) : res = res[:width-3] + "..."
 
     try :
         chars_written = 0
-        for block in blocks :
-            stdscr.addstr(display_line_idx, chars_written, block.content, base_color[block.highlight.value])
-            chars_written += len(block.content)
+        breaks = [0] + [i-start for i in line.breaks if i>start]
+        for i in breaks :
+            next_step = next((j for j in breaks if j > i), len(res))
+
+            remaining = width - chars_written
+            if not remaining : break
+
+            if line.searched_keyword_range[1] > start + 3 and (line.searched_keyword_range[0] - start) <= i < (line.searched_keyword_range[1] - start) : highlight = 2
+            elif line.searched_keyword_range[1] > start + 3 and (line.cmd_range[0] - start) <= i < (line.cmd_range[1] - start) : highlight = 1
+            else : highlight = 0
+            
+            chars_to_write = res[i:next_step if next_step - i <= remaining else i+remaining]
+            stdscr.addstr(display_line_idx, chars_written, chars_to_write, base_color[highlight])
+            chars_written += len(chars_to_write)
     except curses.error:
         pass
-
-
 def main(stdscr, input_lines : list[Line]):
     stdscr.clear()
 
