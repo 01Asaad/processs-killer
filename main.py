@@ -74,26 +74,22 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
 
     line : Line = input_lines[idx]
     res = line.line
-    if idx == current_row : res = "> " + res[2:]
     if start > 0 : res = "..." + res[start + 3:]
+    elif idx == current_row : res = "> " + res[2:]
     if width < len(res) : res = res[:width-3] + "..."
 
     try :
-        chars_written = 0
         breaks = [0] + [i-start for i in line.breaks if i>start]
         for i in breaks :
             next_step = next((j for j in breaks if j > i), len(res))
-
-            remaining = width - chars_written
-            if not remaining : break
 
             if line.searched_keyword_range[1] > start + 3 and (line.searched_keyword_range[0] - start) <= i < (line.searched_keyword_range[1] - start) : highlight = 2
             elif line.searched_keyword_range[1] > start + 3 and (line.cmd_range[0] - start) <= i < (line.cmd_range[1] - start) : highlight = 1
             else : highlight = 0
             
-            chars_to_write = res[i:next_step if next_step - i <= remaining else i+remaining]
-            stdscr.addstr(display_line_idx, chars_written, chars_to_write, base_color[highlight])
-            chars_written += len(chars_to_write)
+            chars_to_write = res[i:min(next_step, width)]
+            stdscr.addstr(display_line_idx, i, chars_to_write, base_color[highlight])
+            if next_step > i+len(chars_to_write) : break
     except curses.error:
         pass
 def main(stdscr, input_lines : list[Line]):
@@ -136,10 +132,14 @@ def main(stdscr, input_lines : list[Line]):
                 h_offset = min(max_offset, h_offset + 10)
             case curses.KEY_LEFT:
                 h_offset = max(0, h_offset - 10)
-            case curses.KEY_END:
-                current_row = len(input_lines) - 1
             case curses.KEY_HOME:
                 current_row = 0
+            case curses.KEY_END:
+                current_row = len(input_lines) - 1
+            case 97 : #a
+                h_offset = 0
+            case 100 : #d
+                h_offset = max_offset
             case 10:  # Enter key
                 line_to_execute = input_lines[current_row]
                 kill(line_to_execute)
