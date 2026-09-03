@@ -47,10 +47,12 @@ def get_curses_colors():
     curses.curs_set(0)
     return colors
 
-def get_matching_processes(search_term : str, user_only: bool = False):
+def get_matching_processes(search_term : str, user_only: bool = False, case_sensitive = False):
     process_output = subprocess.check_output(["ps", "aux"], text=True)
     current_pid = str(os.getpid())
     current_user = pwd.getpwuid(os.getuid()).pw_name
+    search_term, process_output = (search_term, process_output) if case_sensitive else (search_term.lower(), process_output.lower())
+
 
     for line in process_output.splitlines():
         fields = line.split(None, 10)
@@ -160,11 +162,12 @@ if __name__ == '__main__':
     parser.add_argument("search_term", help="Search term for processes")
     parser.add_argument("--exec-only", "-e", action="store_true", help="Only search in the executable path of the process")
     parser.add_argument("--user-only", "-u", action="store_true", help="Only search processes owned by the current user")
+    parser.add_argument("--case-sensitive", "-cs", action="store_true", help="Make the matching case sensitive")
     args = parser.parse_args()
     if not args.search_term:
         print("no search term for process was given")
         exit()
-    input_lines = [Line(line, args.search_term) for line in get_matching_processes(args.search_term, args.user_only)]
+    input_lines = [Line(line, args.search_term) for line in get_matching_processes(args.search_term, args.user_only, args.case_sensitive)]
     if args.exec_only :
         input_lines = [line for line in input_lines if args.search_term in line.command]
     if not input_lines :
