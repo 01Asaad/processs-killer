@@ -141,6 +141,8 @@ def main(stdscr, input_lines : list[Line]):
             case 97 : #a
                 h_offset = 0
             case 100 : #d
+                h_offset = len(input_lines[current_row].line) - w + 4
+            case 102 : #f
                 h_offset = max_offset
             case 10:  # Enter key
                 line_to_execute = input_lines[current_row]
