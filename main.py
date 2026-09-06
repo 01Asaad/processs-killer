@@ -56,7 +56,7 @@ def get_matching_processes(search_term : str, user_only: bool = False, case_sens
 
     for i, line in enumerate(process_output.splitlines()):
         if i == 0 : continue
-        
+
         fields = line.split(None, 10)
         if len(fields) < 11 or fields[1] == current_pid:
             continue
@@ -96,7 +96,16 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
             if next_step > i+len(chars_to_write) : break
     except curses.error:
         pass
-def main(stdscr, lines : list[Line]):
+def killall(lines : list[Line]) :
+    init_total = len(lines)
+    count = 0
+    for line in lines :
+        try :
+            kill(line)
+            count +=1
+        except : pass
+    print(f"killed {count} processes out of {init_total}")
+def killer_ui(stdscr, lines : list[Line]):
     stdscr.clear()
 
 
@@ -167,6 +176,7 @@ if __name__ == '__main__':
     parser.add_argument("--exec-only", "-e", action="store_true", help="Only search in the executable path of the process")
     parser.add_argument("--user-only", "-u", action="store_true", help="Only search processes owned by the current user")
     parser.add_argument("--case-sensitive", "-cs", action="store_true", help="Make the matching case sensitive")
+    parser.add_argument("--all", "-a", action="store_true", help="kill all processes with matched criteria, kinda similar behavior to killall command")
     args = parser.parse_args()
     if not args.search_term:
         print("no search term for process was given")
@@ -177,6 +187,9 @@ if __name__ == '__main__':
     if not lines :
         print("no processes found")
         exit()
-    try : curses.wrapper(main, lines)
-    except KeyboardInterrupt:
-        print("KeyboardInterrupt")
+    if args.all :
+        killall(lines)
+    else :
+        try : curses.wrapper(killer_ui, lines)
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt")
