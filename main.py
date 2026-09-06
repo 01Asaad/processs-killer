@@ -51,7 +51,7 @@ def get_matching_processes(search_term : str, user_only: bool = False, case_sens
     process_output = subprocess.check_output(["ps", "aux"], text=True)
     current_pid = str(os.getpid())
     current_user = pwd.getpwuid(os.getuid()).pw_name
-    search_term, process_output = (search_term, process_output) if case_sensitive else (search_term.lower(), process_output.lower())
+    search_term = search_term if case_sensitive else search_term.lower()
 
 
     for line in process_output.splitlines():
@@ -60,7 +60,7 @@ def get_matching_processes(search_term : str, user_only: bool = False, case_sens
             continue
         if user_only and fields[0] != current_user:
             continue
-        if search_term in line:
+        if search_term in (line if case_sensitive else line.lower()):
             yield line
 
 
@@ -69,12 +69,12 @@ def get_matching_processes(search_term : str, user_only: bool = False, case_sens
 def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colors) :
     
     idx = top_row + display_line_idx
-    if idx >= len(input_lines): return False
+    if idx >= len(lines): return False
 
     default_color, selected_color, command_color, selected_command_color, searched_color, selected_searched_color = colors
     base_color = (selected_color, selected_command_color, selected_searched_color) if idx == current_row else (default_color, command_color, searched_color)
 
-    line : Line = input_lines[idx]
+    line : Line = lines[idx]
     res = line.line
     if start > 0 : res = "..." + res[start + 3:]
     elif idx == current_row : res = "> " + res[2:]
@@ -94,7 +94,7 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
             if next_step > i+len(chars_to_write) : break
     except curses.error:
         pass
-def main(stdscr, input_lines : list[Line]):
+def main(stdscr, lines : list[Line]):
     stdscr.clear()
 
 
@@ -106,7 +106,7 @@ def main(stdscr, input_lines : list[Line]):
 
     while True:
         stdscr.clear()
-        if not input_lines: exit()
+        if not lines: exit()
 
         visible_height, w = stdscr.getmaxyx()
 
@@ -114,7 +114,7 @@ def main(stdscr, input_lines : list[Line]):
         top_row = current_row - visible_height + 1 if current_row >= top_row + visible_height else top_row
 
 
-        max_content_length = max(len(line.line) for line in input_lines)
+        max_content_length = max(len(line.line) for line in lines)
         max_offset = max(0, max_content_length - w)
         h_offset = max(0, h_offset)
         h_offset = min(h_offset, max_offset)
@@ -128,7 +128,7 @@ def main(stdscr, input_lines : list[Line]):
         match key:
             case curses.KEY_UP if current_row > 0:
                 current_row -= 1
-            case curses.KEY_DOWN if current_row < len(input_lines) - 1:
+            case curses.KEY_DOWN if current_row < len(lines) - 1:
                 current_row += 1
             case curses.KEY_RIGHT:
                 h_offset = min(max_offset, h_offset + 10)
@@ -137,21 +137,21 @@ def main(stdscr, input_lines : list[Line]):
             case curses.KEY_HOME:
                 current_row = 0
             case curses.KEY_END:
-                current_row = len(input_lines) - 1
+                current_row = len(lines) - 1
             case 97 : #a
                 h_offset = 0
             case 100 : #d
-                h_offset = len(input_lines[current_row].line) - w + 4
+                h_offset = len(lines[current_row].line) - w + 4
             case 102 : #f
                 h_offset = max_offset
             case 10:  # Enter key
-                line_to_execute = input_lines[current_row]
+                line_to_execute = lines[current_row]
                 kill(line_to_execute)
 
-                input_lines.pop(current_row)
-                if not input_lines : exit()
+                lines.pop(current_row)
+                if not lines : exit()
 
-                if current_row >= len(input_lines) and current_row > 0:
+                if current_row >= len(lines) and current_row > 0:
                     current_row -= 1
             case 113 : #q key (ord('q'))
                 break
@@ -169,12 +169,12 @@ if __name__ == '__main__':
     if not args.search_term:
         print("no search term for process was given")
         exit()
-    input_lines = [Line(line, args.search_term) for line in get_matching_processes(args.search_term, args.user_only, args.case_sensitive)]
+    lines = [Line(line, args.search_term, args.case_sensitive) for line in get_matching_processes(args.search_term, args.user_only, args.case_sensitive)]
     if args.exec_only :
-        input_lines = [line for line in input_lines if args.search_term in line.command]
-    if not input_lines :
+        lines = [line for line in lines if args.search_term in line.command]
+    if not lines :
         print("no processes found")
         exit()
-    try : curses.wrapper(main, input_lines)
+    try : curses.wrapper(main, lines)
     except KeyboardInterrupt:
         print("KeyboardInterrupt")

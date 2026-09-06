@@ -1,9 +1,10 @@
 
 class Line :
-    def __init__(self, line : str, searched_keyword : str) :
+    def __init__(self, line : str, searched_keyword : str, case_sensitive = False) :
         self.line = "  " + line
         self.cmd_range = self.get_command_span(self.line)
-        self.searched_keyword_range = (self.line.index(searched_keyword), self.line.index(searched_keyword) + len(searched_keyword))
+        searched_keyword_index = self.line.index(searched_keyword) if case_sensitive else self.line.lower().index(searched_keyword.lower())
+        self.searched_keyword_range = (searched_keyword_index, searched_keyword_index + len(searched_keyword))
         self.breaks = sorted([*self.searched_keyword_range, *self.cmd_range, 0])
     def get_command_span(self, line : str, prefix_len : int = 0):
         parts = line.split()
