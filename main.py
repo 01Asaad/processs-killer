@@ -54,7 +54,9 @@ def get_matching_processes(search_term : str, user_only: bool = False, case_sens
     search_term = search_term if case_sensitive else search_term.lower()
 
 
-    for line in process_output.splitlines():
+    for i, line in enumerate(process_output.splitlines()):
+        if i == 0 : continue
+        
         fields = line.split(None, 10)
         if len(fields) < 11 or fields[1] == current_pid:
             continue
