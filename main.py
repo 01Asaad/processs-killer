@@ -9,7 +9,7 @@ from Line import Line
 def kill(line : Line):
 
     processID=[i for i in line.line.split(" ") if i.strip()][1]
-    subprocess.run(["kill", "-9", processID])
+    subprocess.run(["kill", "-9", processID], check=True)
 
 def get_curses_colors_colored_terminal() :
     curses.use_default_colors()
@@ -103,7 +103,7 @@ def killall(lines : list[Line]) :
         try :
             kill(line)
             count +=1
-        except : pass
+        except subprocess.CalledProcessError : pass
     print(f"killed {count} processes out of {init_total}")
 def killer_ui(stdscr, lines : list[Line]):
     stdscr.clear()
