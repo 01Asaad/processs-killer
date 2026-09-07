@@ -1,10 +1,11 @@
 from argparse import ArgumentParser
 import curses
+from enum import StrEnum
 import os
 import pwd
 import subprocess
 
-from Line import Line
+from Line import Line, Matched_Line
 
 def kill(line : Line):
 
@@ -46,24 +47,44 @@ def get_curses_colors():
     colors = get_curses_colors_colored_terminal() if curses.has_colors() else get_curses_colors_non_colored_terminal()
     curses.curs_set(0)
     return colors
-
-def get_matching_processes(search_term : str, user_only: bool = False, case_sensitive = False):
+class Search_Target(StrEnum) :
+    ALL = "all"
+    EXEC_NAME = "exec_name"
+    EXEC_PATH = "exec_path"
+def get_matching_processes(search_term : str, user_only: bool = False, case_sensitive = False, search_target = Search_Target.ALL, exact_match = False):
     process_output = subprocess.check_output(["ps", "aux"], text=True)
     current_pid = str(os.getpid())
     current_user = pwd.getpwuid(os.getuid()).pw_name
     search_term = search_term if case_sensitive else search_term.lower()
 
-
-    for i, line in enumerate(process_output.splitlines()):
+    lines : list[Matched_Line] = []
+    for i, row in enumerate(process_output.splitlines()):
         if i == 0 : continue
 
-        fields = line.split(None, 10)
+        fields = row.split(None, 10)
         if len(fields) < 11 or fields[1] == current_pid:
             continue
         if user_only and fields[0] != current_user:
             continue
-        if search_term in (line if case_sensitive else line.lower()):
-            yield line
+
+        line = Line(row)
+
+        match search_target :
+            case Search_Target.EXEC_NAME :
+                dest = line.exec_name
+            case Search_Target.EXEC_PATH :
+                dest = line.command
+            case Search_Target.ALL :
+                dest = row
+        if case_sensitive :
+            dest = dest.lower()
+            search_term = search_term.lower()
+
+        if exact_match and len(search_term) != len(dest) : continue
+
+        if search_term in dest :
+            lines.append(Matched_Line.from_Line(line, search_term, case_sensitive))
+    return lines
 
 
 
@@ -76,7 +97,7 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
     default_color, selected_color, command_color, selected_command_color, searched_color, selected_searched_color = colors
     base_color = (selected_color, selected_command_color, selected_searched_color) if idx == current_row else (default_color, command_color, searched_color)
 
-    line : Line = lines[idx]
+    line : Matched_Line = lines[idx]
     res = line.line
     if start > 0 : res = "..." + res[start + 3:]
     elif idx == current_row : res = "> " + res[2:]
@@ -96,7 +117,7 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
             if next_step > i+len(chars_to_write) : break
     except curses.error:
         pass
-def killall(lines : list[Line]) :
+def killall(lines : list[Matched_Line]) :
     init_total = len(lines)
     count = 0
     for line in lines :
@@ -105,7 +126,7 @@ def killall(lines : list[Line]) :
             count +=1
         except subprocess.CalledProcessError : pass
     print(f"killed {count} processes out of {init_total}")
-def killer_ui(stdscr, lines : list[Line]):
+def killer_ui(stdscr, lines : list[Matched_Line]):
     stdscr.clear()
 
 
@@ -173,15 +194,23 @@ def killer_ui(stdscr, lines : list[Line]):
 if __name__ == '__main__':
     parser = ArgumentParser(description="Process Killer")
     parser.add_argument("search_term", help="Search term for processes")
-    parser.add_argument("--exec-only", "-e", action="store_true", help="Only search in the executable path of the process")
+    parser.add_argument("--path-only", "-p", action="store_true", help="Only search in the executable path of the process")
+    parser.add_argument("--exec-only", "-e", action="store_true", help="Only search in the executable name of the process")
     parser.add_argument("--user-only", "-u", action="store_true", help="Only search processes owned by the current user")
     parser.add_argument("--case-sensitive", "-cs", action="store_true", help="Make the matching case sensitive")
+    parser.add_argument("--exact-match", "-x", action="store_true", help="Match whole string instead of substring")
     parser.add_argument("--all", "-a", action="store_true", help="kill all processes with matched criteria, kinda similar behavior to killall command")
     args = parser.parse_args()
     if not args.search_term:
         print("no search term for process was given")
         exit()
-    lines = [Line(line, args.search_term, args.case_sensitive) for line in get_matching_processes(args.search_term, args.user_only, args.case_sensitive)]
+    if args.exec_only :
+        search_target = Search_Target.EXEC_NAME
+    elif args.path_only :
+        search_target = Search_Target.EXEC_PATH
+    else :
+        search_target = Search_Target.ALL
+    lines = get_matching_processes(args.search_term, args.user_only, args.case_sensitive, search_target, args.exact_match)
     if args.exec_only :
         lines = [line for line in lines if args.search_term in line.command]
     if not lines :
