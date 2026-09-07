@@ -152,7 +152,7 @@ def killer_ui(stdscr, lines : list[Line]):
             case 97 : #a
                 h_offset = 0
             case 100 : #d
-                h_offset = len(lines[current_row].line) - w + 4
+                h_offset = (len(lines[current_row].line) - w + 4) if h_offset or len(lines[current_row].line) > h_offset + w else h_offset
             case 102 : #f
                 h_offset = max_offset
             case 10:  # Enter key
