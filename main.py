@@ -76,7 +76,7 @@ def get_matching_processes(search_term : str, user_only: bool = False, case_sens
                 dest = line.command
             case Search_Target.ALL :
                 dest = row
-        if case_sensitive :
+        if not case_sensitive :
             dest = dest.lower()
             search_term = search_term.lower()
 
@@ -178,7 +178,9 @@ def killer_ui(stdscr, lines : list[Matched_Line]):
                 h_offset = max_offset
             case 10:  # Enter key
                 line_to_execute = lines[current_row]
-                kill(line_to_execute)
+                try :kill(line_to_execute)
+                except subprocess.CalledProcessError :
+                    pass
 
                 lines.pop(current_row)
                 if not lines : exit()
@@ -214,7 +216,7 @@ if __name__ == '__main__':
     if args.exec_only :
         lines = [line for line in lines if args.search_term in line.command]
     if not lines :
-        print("no processes found")
+        print("no processes found for input " + args.search_term)
         exit()
     if args.all :
         killall(lines)
