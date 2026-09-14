@@ -4,7 +4,7 @@ class Line :
         self.line = "  " + line
 
         self.command = self.line.split()[10]
-        index = line.index(self.command)
+        index = self.line.index(self.command)
         self.cmd_range = index, index + len(self.command)
 
         self.exec_name = self.command.split("/")[-1]
