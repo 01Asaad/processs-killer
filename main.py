@@ -199,7 +199,7 @@ if __name__ == '__main__':
     parser.add_argument("--path-only", "-p", action="store_true", help="Only search in the executable path of the process")
     parser.add_argument("--exec-only", "-e", action="store_true", help="Only search in the executable name of the process")
     parser.add_argument("--user-only", "-u", action="store_true", help="Only search processes owned by the current user")
-    parser.add_argument("--case-sensitive", "-cs", action="store_true", help="Make the matching case sensitive")
+    parser.add_argument("--case-sensitive", "-cs", action="store_true", help="Make the matching case sensitive. by default, if the search term is in lowercasem, it's case insensitive, other wise it is.")
     parser.add_argument("--exact-match", "-x", action="store_true", help="Match whole string instead of substring")
     parser.add_argument("--all", "-a", action="store_true", help="kill all processes with matched criteria, kinda similar behavior to killall command")
     args = parser.parse_args()
@@ -212,7 +212,8 @@ if __name__ == '__main__':
         search_target = Search_Target.EXEC_PATH
     else :
         search_target = Search_Target.ALL
-    lines = get_matching_processes(args.search_term, args.user_only, args.case_sensitive, search_target, args.exact_match)
+    IS_CASE_SENSITIVE = args.case_sensitive or any(c.isupper() for c in args.search_term)
+    lines = get_matching_processes(args.search_term, args.user_only, IS_CASE_SENSITIVE, search_target, args.exact_match)
     if args.exec_only :
         lines = [line for line in lines if args.search_term in line.command]
     if not lines :
