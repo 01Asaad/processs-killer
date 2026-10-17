@@ -14,7 +14,7 @@ class Matched_Line(Line) :
         super().__init__(line)
         searched_keyword_index = self.line.index(searched_keyword) if case_sensitive else self.line.lower().index(searched_keyword.lower())
         self.searched_keyword_range = (searched_keyword_index, searched_keyword_index + len(searched_keyword))
-        self.breaks = sorted([*self.searched_keyword_range, *self.cmd_range, 0])
+        self.breakpoints = sorted([*self.searched_keyword_range, *self.cmd_range, 0])
     @staticmethod
     def from_Line(line : Line, searched_keyword: str, case_sensitive=False) :
         return Matched_Line(line.line[2:], searched_keyword, case_sensitive)

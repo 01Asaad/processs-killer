@@ -1,11 +1,12 @@
-from argparse import ArgumentParser
 import curses
-from enum import StrEnum
 import os
 import pwd
 import subprocess
+from argparse import ArgumentParser
+from enum import StrEnum
 
 from Line import Line, Matched_Line
+
 
 def kill(line : Line):
 
@@ -104,9 +105,9 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
     if width < len(res) : res = res[:width-3] + "..."
 
     try :
-        breaks = [0] + [i-start for i in line.breaks if i>start]
-        for i in breaks :
-            next_step = next((j for j in breaks if j > i), len(res))
+        breakpoints = [0] + [i-start for i in line.breakpoints if i>start]
+        for i in breakpoints :
+            next_step = next((j for j in breakpoints if j > i), len(res))
 
             if line.searched_keyword_range[1] > start + 3 and (line.searched_keyword_range[0] - start) <= i < (line.searched_keyword_range[1] - start) : highlight = 2
             elif line.searched_keyword_range[1] > start + 3 and (line.cmd_range[0] - start) <= i < (line.cmd_range[1] - start) : highlight = 1
@@ -118,14 +119,13 @@ def draw_line(stdscr, display_line_idx, width, top_row, current_row, start, colo
     except curses.error:
         pass
 def killall(lines : list[Matched_Line]) :
-    init_total = len(lines)
-    count = 0
+    count, total = 0, len(lines)
     for line in lines :
         try :
             kill(line)
             count +=1
         except subprocess.CalledProcessError : pass
-    print(f"killed {count} processes out of {init_total}")
+    print(f"killed {count} processes out of {total}")
 def killer_ui(stdscr, lines : list[Matched_Line]):
     stdscr.clear()
 
@@ -142,7 +142,7 @@ def killer_ui(stdscr, lines : list[Matched_Line]):
 
         visible_height, w = stdscr.getmaxyx()
 
-        top_row = current_row if current_row < top_row else top_row
+        top_row = min(top_row, current_row)
         top_row = current_row - visible_height + 1 if current_row >= top_row + visible_height else top_row
 
 
@@ -190,11 +190,9 @@ def killer_ui(stdscr, lines : list[Matched_Line]):
             case 113 : #q key (ord('q'))
                 break
 
-
-
-
-if __name__ == '__main__':
+def get_parser() :
     parser = ArgumentParser(description="Process Killer")
+    
     parser.add_argument("search_term", help="Search term for processes")
     parser.add_argument("--path-only", "-p", action="store_true", help="Only search in the executable path of the process")
     parser.add_argument("--exec-only", "-e", action="store_true", help="Only search in the executable name of the process")
@@ -202,6 +200,12 @@ if __name__ == '__main__':
     parser.add_argument("--case-sensitive", "-cs", action="store_true", help="Make the matching case sensitive. by default, if the search term is in lowercasem, it's case insensitive, other wise it is.")
     parser.add_argument("--exact-match", "-x", action="store_true", help="Match whole string instead of substring")
     parser.add_argument("--all", "-a", action="store_true", help="kill all processes with matched criteria, kinda similar behavior to killall command")
+
+    return parser
+
+
+if __name__ == '__main__':
+    parser = get_parser()
     args = parser.parse_args()
     if not args.search_term:
         print("no search term for process was given")
